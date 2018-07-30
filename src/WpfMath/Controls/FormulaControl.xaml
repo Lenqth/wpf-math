@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="WpfMath.Controls.FormulaControl"
+<UserControl x:Name="userControl" x:Class="WpfMath.Controls.FormulaControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -8,14 +8,19 @@
              d:DesignHeight="300" d:DesignWidth="300">
     <UserControl.Resources>
         <ControlTemplate x:Key="DefaultErrorTemplate">
-            <DockPanel>
+            <DockPanel Background="Transparent">
+                <DockPanel.ContextMenu >
+                    <ContextMenu>
+                        <MenuItem Header="Show Errors" Click="MenuShowError_Click" />
+                    </ContextMenu>
+                </DockPanel.ContextMenu>
                 <Border BorderBrush="Red" BorderThickness="1">
                     <AdornedElementPlaceholder/>
                 </Border>
             </DockPanel>
         </ControlTemplate>
     </UserControl.Resources>
-    
+
     <UserControl.Style>
         <Style TargetType="UserControl">
             <Setter Property="local:FormulaControl.ErrorTemplate" Value="{StaticResource DefaultErrorTemplate}"/>
@@ -26,7 +31,7 @@
             </Style.Triggers>
         </Style>
     </UserControl.Style>
-    
+
     <Grid>
         <local:VisualContainerElement x:Name="formulaContainerElement"/>
     </Grid>

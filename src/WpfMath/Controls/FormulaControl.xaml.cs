@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,8 +14,7 @@ namespace WpfMath.Controls
     /// <summary>
     /// Interaction logic for FormulaControl.xaml
     /// </summary>
-    public partial class FormulaControl : UserControl
-    {
+    public partial class FormulaControl : UserControl {
         private static TexFormulaParser formulaParser = new TexFormulaParser();
         private TexFormula texFormula;
 
@@ -71,6 +72,10 @@ namespace WpfMath.Controls
             set { SetValue(SelectionBrushProperty, value); }
         }
 
+        public static readonly DependencyProperty _ForegroundProperty = DependencyProperty.Register(
+            nameof(Foreground), typeof(Brush), typeof(FormulaControl),
+            new PropertyMetadata(Brushes.Black, OnRenderSettingsChanged));
+
         public static readonly DependencyProperty FormulaProperty = DependencyProperty.Register(
             nameof(Formula), typeof(string), typeof(FormulaControl),
             new PropertyMetadata("", OnRenderSettingsChanged, CoerceFormula));
@@ -112,8 +117,8 @@ namespace WpfMath.Controls
             InitializeComponent();
         }
 
-        private void Render()
-        {
+
+        private void Render(){
             // Create formula object from input text.
             if (texFormula == null)
             {
@@ -124,17 +129,19 @@ namespace WpfMath.Controls
             // Render formula to visual.
             var visual = new DrawingVisual();
             var renderer = texFormula.GetRenderer(TexStyle.Display, Scale, SystemTextFontName);
-
             var selectionBrush = SelectionBrush;
-            if (selectionBrush != null)
-            {
-                var allBoxes = new List<Box>(renderer.Box.Children);
+			var allBoxes = new List<Box>(renderer.Box.Children);
+			renderer.Box.Foreground = Foreground;
+			for (int idx = 0; idx < allBoxes.Count; idx++) {
+				var box = allBoxes[idx];
+				allBoxes.AddRange(box.Children);
+				box.Foreground = Foreground;
+			}
+			if (selectionBrush != null){
                 var selectionStart = SelectionStart;
                 var selectionEnd = selectionStart + SelectionLength;
-                for (int idx = 0; idx < allBoxes.Count; idx++)
-                {
+                for (int idx = 0; idx < allBoxes.Count; idx++) {
                     var box = allBoxes[idx];
-                    allBoxes.AddRange(box.Children);
                     var source = box.Source;
                     if (source != null)
                     {
@@ -197,5 +204,14 @@ namespace WpfMath.Controls
             HasError = true;
             texFormula = null;
         }
+
+        private void MenuShowError_Click(object sender, RoutedEventArgs e) {
+            string str = "";
+            foreach (var err in Errors) {
+                str += err.ToString() + System.Environment.NewLine + System.Environment.NewLine;
+            }
+            new SimpleTextBoxDialog(str).ShowDialog();
+        }
+        
     }
 }

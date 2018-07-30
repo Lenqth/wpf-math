@@ -8,12 +8,10 @@ using System.Windows.Media;
 using WpfMath.Atoms;
 using WpfMath.Exceptions;
 
-namespace WpfMath
-{
+namespace WpfMath {
     // TODO: Put all error strings into resources.
     // TODO: Use TextReader for lexing.
-    public class TexFormulaParser
-    {
+    public class TexFormulaParser {
         // Special characters for parsing
         private const char escapeChar = '\\';
 
@@ -50,25 +48,21 @@ namespace WpfMath
             new[] { "Vert", "Vert" }
         };
 
-        static TexFormulaParser()
-        {
+        static TexFormulaParser() {
             predefinedColors = new Dictionary<string, Color>();
 
             Initialize();
         }
 
-        internal static string[][] DelimiterNames
-        {
+        internal static string[][] DelimiterNames {
             get { return delimiterNames; }
         }
 
-        private static void Initialize()
-        {
+        private static void Initialize() {
             //
             // If start application isn't WPF, pack isn't registered by defaultTexFontParser
             //
-            if (Application.ResourceAssembly == null)
-            {
+            if (Application.ResourceAssembly == null) {
                 Application.ResourceAssembly = Assembly.GetExecutingAssembly();
                 if (!UriParser.IsKnownScheme("pack"))
                     UriParser.Register(new GenericUriParser(GenericUriParserOptions.GenericAuthority), "pack", -1);
@@ -96,20 +90,15 @@ namespace WpfMath
             predefinedFormulasParser.Parse(predefinedFormulas);
         }
 
-        internal static string GetDelimeterMapping(char character)
-        {
-            try
-            {
+        internal static string GetDelimeterMapping(char character) {
+            try {
                 return delimeters[character];
-            }
-            catch (KeyNotFoundException)
-            {
+            } catch (KeyNotFoundException) {
                 throw new DelimiterMappingNotFoundException(character);
             }
         }
 
-        internal static SymbolAtom GetDelimiterSymbol(string name, SourceSpan source)
-        {
+        internal static SymbolAtom GetDelimiterSymbol(string name, SourceSpan source) {
             if (name == null)
                 return null;
 
@@ -119,33 +108,28 @@ namespace WpfMath
             return result;
         }
 
-        private static bool IsSymbol(char c)
-        {
+        private static bool IsSymbol(char c) {
             return !char.IsLetterOrDigit(c);
         }
 
-        private static bool IsWhiteSpace(char ch)
-        {
+        private static bool IsWhiteSpace(char ch) {
             return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
         }
 
         private static bool ShouldSkipWhiteSpace(string style) => style != TexUtilities.TextStyleName;
 
-        public TexFormula Parse(string value, string textStyle = null)
-        {
+        public TexFormula Parse(string value, string textStyle = null) {
             Debug.WriteLine(value);
             var position = 0;
             return Parse(new SourceSpan(value, 0, value.Length), ref position, false, textStyle);
         }
 
-        private TexFormula Parse(SourceSpan value, string textStyle)
-        {
+        private TexFormula Parse(SourceSpan value, string textStyle) {
             int localPostion = 0;
             return Parse(value, ref localPostion, false, textStyle);
         }
 
-        private DelimiterInfo ParseUntilDelimiter(SourceSpan value, ref int position, string textStyle)
-        {
+        private DelimiterInfo ParseUntilDelimiter(SourceSpan value, ref int position, string textStyle) {
             var embeddedFormula = Parse(value, ref position, true, textStyle);
             if (embeddedFormula.RootAtom == null)
                 throw new TexParseException("Cannot find closing delimiter");
@@ -158,53 +142,38 @@ namespace WpfMath
                 throw new TexParseException($"Cannot find closing delimiter; got {lastDelimiter} instead");
 
             Atom bodyAtom;
-            if (bodyRow == null)
-            {
+            if (bodyRow == null) {
                 bodyAtom = new RowAtom(source);
-            }
-            else if (bodyRow.Elements.Count > 2)
-            {
+            } else if (bodyRow.Elements.Count > 2) {
                 var row = bodyRow.Elements.Take(bodyRow.Elements.Count - 1)
                     .Aggregate(new RowAtom(source), (r, atom) => r.Add(atom));
                 bodyAtom = row;
-            }
-            else if (bodyRow.Elements.Count == 2)
-            {
+            } else if (bodyRow.Elements.Count == 2) {
                 bodyAtom = bodyRow.Elements[0];
-            }
-            else
-            {
+            } else {
                 throw new NotSupportedException($"Cannot convert {bodyRow} to fenced atom body");
             }
 
             return new DelimiterInfo(bodyAtom, lastDelimiter);
         }
 
-        private TexFormula Parse(SourceSpan value, ref int position, bool allowClosingDelimiter, string textStyle)
-        {
+        private TexFormula Parse(SourceSpan value, ref int position, bool allowClosingDelimiter, string textStyle) {
             var formula = new TexFormula() { TextStyle = textStyle };
             var closedDelimiter = false;
             var skipWhiteSpace = ShouldSkipWhiteSpace(textStyle);
             var initialPosition = position;
-            while (position < value.Length && !(allowClosingDelimiter && closedDelimiter))
-            {
+            while (position < value.Length && !(allowClosingDelimiter && closedDelimiter)) {
                 char ch = value[position];
                 var source = value.Segment(position, 1);
-                if (IsWhiteSpace(ch))
-                {
-                    if (!skipWhiteSpace)
-                    {
+                if (IsWhiteSpace(ch)) {
+                    if (!skipWhiteSpace) {
                         formula.Add(new SpaceAtom(source), source);
                     }
 
                     position++;
-                }
-                else if (ch == escapeChar)
-                {
+                } else if (ch == escapeChar) {
                     ProcessEscapeSequence(formula, value, ref position, allowClosingDelimiter, ref closedDelimiter);
-                }
-                else if (ch == leftGroupChar)
-                {
+                } else if (ch == leftGroupChar) {
                     var groupValue = ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar);
                     var parsedGroup = Parse(groupValue, textStyle);
                     var innerGroupAtom = parsedGroup.RootAtom ?? new RowAtom(groupValue);
@@ -215,23 +184,17 @@ namespace WpfMath
                         TexAtomType.Ordinary);
                     var scriptsAtom = this.AttachScripts(formula, value, ref position, groupAtom);
                     formula.Add(scriptsAtom, value.Segment(initialPosition, scriptsAtom.Source.Length));
-                }
-                else if (ch == rightGroupChar)
-                {
+                } else if (ch == rightGroupChar) {
                     throw new TexParseException("Found a closing '" + rightGroupChar
                         + "' without an opening '" + leftGroupChar + "'!");
-                }
-                else if (ch == superScriptChar || ch == subScriptChar || ch == primeChar)
-                {
+                } else if (ch == superScriptChar || ch == subScriptChar || ch == primeChar) {
                     if (position == 0)
                         throw new TexParseException("Every script needs a base: \""
                             + superScriptChar + "\", \"" + subScriptChar + "\" and \""
                             + primeChar + "\" can't be the first character!");
                     else
                         throw new TexParseException("Double scripts found! Try using more braces.");
-                }
-                else
-                {
+                } else {
                     var scriptsAtom = this.AttachScripts(
                         formula,
                         value,
@@ -245,16 +208,14 @@ namespace WpfMath
             return formula;
         }
 
-        private SourceSpan ReadGroup(TexFormula formula, SourceSpan value, ref int position, char openChar, char closeChar)
-        {
+        private SourceSpan ReadGroup(TexFormula formula, SourceSpan value, ref int position, char openChar, char closeChar) {
             if (position == value.Length || value[position] != openChar)
                 throw new TexParseException("missing '" + openChar + "'!");
 
             var group = 0;
             position++;
             var start = position;
-            while (position < value.Length && !(value[position] == closeChar && group == 0))
-            {
+            while (position < value.Length && !(value[position] == closeChar && group == 0)) {
                 if (value[position] == openChar)
                     group++;
                 else if (value[position] == closeChar)
@@ -262,8 +223,7 @@ namespace WpfMath
                 position++;
             }
 
-            if (position == value.Length)
-            {
+            if (position == value.Length) {
                 // Reached end of formula but group has not been closed.
                 throw new TexParseException("Illegal end,  missing '" + closeChar + "'!");
             }
@@ -272,19 +232,15 @@ namespace WpfMath
             return value.Segment(start, position - start - 1);
         }
 
-        private TexFormula ReadScript(TexFormula formula, SourceSpan value, ref int position)
-        {
+        private TexFormula ReadScript(TexFormula formula, SourceSpan value, ref int position) {
             SkipWhiteSpace(value, ref position);
             if (position == value.Length)
                 throw new TexParseException("illegal end, missing script!");
 
             var ch = value[position];
-            if (ch == leftGroupChar)
-            {
+            if (ch == leftGroupChar) {
                 return Parse(ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar), formula.TextStyle);
-            }
-            else
-            {
+            } else {
                 position++;
                 return Parse(value.Segment(position - 1, 1), formula.TextStyle);
             }
@@ -296,15 +252,13 @@ namespace WpfMath
             ref int position,
             string command,
             bool allowClosingDelimiter,
-            ref bool closedDelimiter)
-        {
+            ref bool closedDelimiter) {
             int start = position - command.Length;
 
             SkipWhiteSpace(value, ref position);
 
             SourceSpan source;
-            switch (command)
-            {
+            switch (command) {
                 case "frac":
                     // Command is fraction.
 
@@ -319,8 +273,7 @@ namespace WpfMath
                     source = value.Segment(start, position - start);
                     return new FractionAtom(source, numeratorFormula.RootAtom, denominatorFormula.RootAtom, true);
 
-                case "left":
-                    {
+                case "left": {
                         SkipWhiteSpace(value, ref position);
                         if (position == value.Length)
                             throw new TexParseException("`left` command should be passed a delimiter");
@@ -342,8 +295,7 @@ namespace WpfMath
                         return new FencedAtom(source, internals.Body, opening, closing);
                     }
 
-                case "right":
-                    {
+                case "right": {
                         if (!allowClosingDelimiter)
                             throw new TexParseException("`right` command is not allowed without `left`");
 
@@ -374,8 +326,7 @@ namespace WpfMath
                     int sqrtEnd = position;
 
                     TexFormula degreeFormula = null;
-                    if (value[position] == leftBracketChar)
-                    {
+                    if (value[position] == leftBracketChar) {
                         // Degree of radical- is specified.
                         degreeFormula = Parse(ReadGroup(formula, value, ref position, leftBracketChar,
                             rightBracketChar), formula.TextStyle);
@@ -386,35 +337,30 @@ namespace WpfMath
                         this.ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar),
                         formula.TextStyle);
 
-                    if (sqrtFormula.RootAtom == null)
-                    {
+                    if (sqrtFormula.RootAtom == null) {
                         throw new TexParseException("The radicand of a square root can't be empty!");
                     }
 
                     source = value.Segment(start, sqrtEnd - start);
                     return new Radical(source, sqrtFormula.RootAtom, degreeFormula?.RootAtom);
 
-                case "color":
-                    {
+                case "color": {
                         var colorName = ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar);
                         var remainingString = value.Segment(position);
                         var remaining = Parse(remainingString, formula.TextStyle);
                         position = value.Length;
-                        if (predefinedColors.TryGetValue(colorName.ToString(), out var color))
-                        {
+                        if (predefinedColors.TryGetValue(colorName.ToString(), out var color)) {
                             source = value.Segment(start, position - start);
                             return new StyledAtom(source, remaining.RootAtom, null, new SolidColorBrush(color));
                         }
 
                         throw new TexParseException($"Color {colorName} not found");
                     }
-                case "colorbox":
-                    {
+                case "colorbox": {
                         var colorName = ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar);
                         var remainingString = ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar);
                         var remaining = Parse(remainingString, formula.TextStyle);
-                        if (predefinedColors.TryGetValue(colorName.ToString(), out var color))
-                        {
+                        if (predefinedColors.TryGetValue(colorName.ToString(), out var color)) {
                             source = value.Segment(start, position - start);
                             return new StyledAtom(source, remaining.RootAtom, new SolidColorBrush(color), null);
                         }
@@ -431,21 +377,17 @@ namespace WpfMath
             SourceSpan value,
             ref int position,
             bool allowClosingDelimiter,
-            ref bool closedDelimiter)
-        {
+            ref bool closedDelimiter) {
             var initialSrcPosition = position;
             position++;
             var start = position;
-            while (position < value.Length)
-            {
+            while (position < value.Length) {
                 var ch = value[position];
                 var isEnd = position == value.Length - 1;
-                if (!char.IsLetter(ch) || isEnd)
-                {
+                if (!char.IsLetter(ch) || isEnd) {
                     // Escape sequence has ended
                     // Or it's a symbol. Assuming in this case it will only be a single char.
-                    if ((isEnd && char.IsLetter(ch)) || position - start == 0)
-                    {
+                    if ((isEnd && char.IsLetter(ch)) || position - start == 0) {
                         position++;
                     }
                     break;
@@ -457,43 +399,30 @@ namespace WpfMath
             var commandSpan = value.Segment(start, position - start);
             var command = commandSpan.ToString();
             var formulaSource = new SourceSpan(value.Source, initialSrcPosition, commandSpan.End);
-
             SymbolAtom symbolAtom = null;
-            if (SymbolAtom.TryGetAtom(commandSpan, out symbolAtom))
-            {
+            if (SymbolAtom.TryGetAtom(commandSpan, out symbolAtom)) {
                 // Symbol was found.
 
-                if (symbolAtom.Type == TexAtomType.Accent)
-                {
+                if (symbolAtom.Type == TexAtomType.Accent) {
                     var helper = new TexFormulaHelper(formula, formulaSource);
                     TexFormula accentFormula = ReadScript(formula, value, ref position);
                     helper.AddAccent(accentFormula, symbolAtom.Name);
-                }
-                else if (symbolAtom.Type == TexAtomType.BigOperator)
-                {
+                } else if (symbolAtom.Type == TexAtomType.BigOperator) {
                     var opAtom = new BigOperatorAtom(formulaSource, symbolAtom, null, null);
                     formula.Add(this.AttachScripts(formula, value, ref position, opAtom), formulaSource);
-                }
-                else
-                {
+                } else {
                     formula.Add(this.AttachScripts(formula, value, ref position, symbolAtom), formulaSource);
                 }
-            }
-            else if (predefinedFormulas.TryGetValue(command, out var factory))
-            {
+            } else if (predefinedFormulas.TryGetValue(command, out var factory)) {
                 // Predefined formula was found.
                 var predefinedFormula = factory(formulaSource);
                 var atom = this.AttachScripts(formula, value, ref position, predefinedFormula.RootAtom);
                 formula.Add(atom, formulaSource);
-            }
-            else if (command.Equals("nbsp"))
-            {
+            } else if (command.Equals("nbsp")) {
                 // Space was found.
                 var atom = this.AttachScripts(formula, value, ref position, new SpaceAtom(formulaSource));
                 formula.Add(atom, formulaSource);
-            }
-            else if (textStyles.Contains(command))
-            {
+            } else if (textStyles.Contains(command)) {
                 // Text style was found.
                 this.SkipWhiteSpace(value, ref position);
                 var styledFormula = Parse(ReadGroup(formula, value, ref position, leftGroupChar, rightGroupChar), command);
@@ -502,9 +431,7 @@ namespace WpfMath
                 var atom = this.AttachScripts(formula, value, ref position, styledFormula.RootAtom);
                 var source = new SourceSpan(formulaSource.Source, formulaSource.Start, position);
                 formula.Add(atom, source);
-            }
-            else if (commands.Contains(command))
-            {
+            } else if (commands.Contains(command)) {
                 // Command was found.
                 var commandAtom = this.ProcessCommand(
                     formula,
@@ -524,18 +451,33 @@ namespace WpfMath
 
                 var source = new SourceSpan(formulaSource.Source, formulaSource.Start, commandAtom.Source.End);
                 formula.Add(commandAtom, source);
-            }
-            else
-            {
+            } else {
+                //				this.AttachScripts(formula, value, ref position, );
+                position = initialSrcPosition;
+                var fallbackSpan = new SourceSpan(value.Source, start, commandSpan.End);
+                var escapeAtom =
+                    this.AttachScripts(
+                        formula,
+                        value,
+                        ref position,
+                        new CharAtom(new SourceSpan(value.Source, position, 1), '\\'),
+                        true); // this.ConvertCharacter(formula, ref position, new SourceSpan(value.Source,position,1));
+
+                var scriptsAtom = this.AttachScripts(
+                        formula,
+                        value,
+                        ref position,
+                        this.ConvertCharacter(formula, ref position, fallbackSpan),
+                        true);
+                // formula.Add(scriptsAtom, formulaSource );
                 // Escape sequence is invalid.
-                throw new TexParseException("Unknown symbol or command or predefined TeXFormula: '" + command + "'");
+                //throw new TexParseException("Unknown symbol or command or predefined TeXFormula: '" + command + "'");
+
             }
         }
 
-        private Atom AttachScripts(TexFormula formula, SourceSpan value, ref int position, Atom atom, bool skipWhiteSpace = true)
-        {
-            if (skipWhiteSpace)
-            {
+        private Atom AttachScripts(TexFormula formula, SourceSpan value, ref int position, Atom atom, bool skipWhiteSpace = true) {
+            if (skipWhiteSpace) {
                 SkipWhiteSpace(value, ref position);
             }
 
@@ -546,14 +488,11 @@ namespace WpfMath
             // Check for prime marks.
             var primesRowAtom = new RowAtom(new SourceSpan(value.Source, position, 0));
             int i = position;
-            while (i < value.Length)
-            {
-                if (value[i] == primeChar)
-                {
+            while (i < value.Length) {
+                if (value[i] == primeChar) {
                     primesRowAtom = primesRowAtom.Add(SymbolAtom.GetAtom("prime", value.Segment(i, 1)));
                     position++;
-                }
-                else if (!IsWhiteSpace(value[i]))
+                } else if (!IsWhiteSpace(value[i]))
                     break;
                 i++;
             }
@@ -574,29 +513,24 @@ namespace WpfMath
             TexFormula subscriptFormula = null;
 
             var ch = value[position];
-            if (ch == superScriptChar)
-            {
+            if (ch == superScriptChar) {
                 // Attach superscript.
                 position++;
                 superscriptFormula = ReadScript(formula, value, ref position);
 
                 SkipWhiteSpace(value, ref position);
-                if (position < value.Length && value[position] == subScriptChar)
-                {
+                if (position < value.Length && value[position] == subScriptChar) {
                     // Attach subscript also.
                     position++;
                     subscriptFormula = ReadScript(formula, value, ref position);
                 }
-            }
-            else if (ch == subScriptChar)
-            {
+            } else if (ch == subScriptChar) {
                 // Add subscript.
                 position++;
                 subscriptFormula = ReadScript(formula, value, ref position);
 
                 SkipWhiteSpace(value, ref position);
-                if (position < value.Length && value[position] == superScriptChar)
-                {
+                if (position < value.Length && value[position] == superScriptChar) {
                     // Attach superscript also.
                     position++;
                     superscriptFormula = ReadScript(formula, value, ref position);
@@ -609,11 +543,9 @@ namespace WpfMath
             // Check whether to return Big Operator or Scripts.
             var subscriptAtom = subscriptFormula?.RootAtom;
             var superscriptAtom = superscriptFormula?.RootAtom;
-            if (atom.GetRightType() == TexAtomType.BigOperator)
-            {
+            if (atom.GetRightType() == TexAtomType.BigOperator) {
                 var source = value.Segment(atom.Source.Start, position - atom.Source.Start);
-                if (atom is BigOperatorAtom typedAtom)
-                {
+                if (atom is BigOperatorAtom typedAtom) {
                     return new BigOperatorAtom(
                         source,
                         typedAtom.BaseAtom,
@@ -623,45 +555,37 @@ namespace WpfMath
                 }
 
                 return new BigOperatorAtom(source, atom, subscriptAtom, superscriptAtom);
-            }
-            else
-            {
+            } else {
                 var source = new SourceSpan(value.Source, initialPosition, position - initialPosition);
                 return new ScriptsAtom(source, atom, subscriptAtom, superscriptAtom);
             }
         }
 
-        private Atom ConvertCharacter(TexFormula formula, ref int position, SourceSpan source)
-        {
+        private Atom ConvertCharacter(TexFormula formula, ref int position, SourceSpan source) {
             var character = source[0];
             position++;
-            if (IsSymbol(character) && formula.TextStyle != TexUtilities.TextStyleName)
-            {
+            if (IsSymbol(character) && formula.TextStyle != TexUtilities.TextStyleName) {
                 // Character is symbol.
                 var symbolName = symbols.ElementAtOrDefault(character);
-                if (string.IsNullOrEmpty(symbolName))
-                    throw new TexParseException($"Unknown character : '{character}'");
-
-                try
-                {
-                    return SymbolAtom.GetAtom(symbolName, source);
+                if (string.IsNullOrEmpty(symbolName)) {
+                    return new CharAtom(source, character, formula.TextStyle);
+                    //throw new TexParseException($"Unknown character : '{character}'");
                 }
-                catch (SymbolNotFoundException e)
-                {
+                try {
+                    return SymbolAtom.GetAtom(symbolName, source);
+                } catch (SymbolNotFoundException e) {
                     throw new TexParseException("The character '"
                             + character.ToString()
                             + "' was mapped to an unknown symbol with the name '"
                             + (string)symbolName + "'!", e);
                 }
-            }
-            else // Character is alpha-numeric or should be rendered as text.
-            {
+            } else // Character is alpha-numeric or should be rendered as text.
+              {
                 return new CharAtom(source, character, formula.TextStyle);
             }
         }
 
-        private void SkipWhiteSpace(SourceSpan value, ref int position)
-        {
+        private void SkipWhiteSpace(SourceSpan value, ref int position) {
             while (position < value.Length && IsWhiteSpace(value[position]))
                 position++;
         }
